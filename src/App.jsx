@@ -283,8 +283,10 @@ export default function App() {
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);font-family:'Outfit','Noto Sans Bengali',sans-serif}
-.Z{color:var(--t1);min-height:100vh;min-height:100dvh;max-width:440px;margin:0 auto;position:relative;overflow-x:hidden}
+.Z{color:var(--t1);min-height:100vh;min-height:100dvh;max-width:680px;margin:0 auto;position:relative;overflow-x:hidden}
 .W{position:relative;z-index:1;padding:0 16px 96px;min-height:100vh;min-height:100dvh;transition:opacity .1s}
+@media(min-width:600px){.W{padding:0 40px 96px}}
+@media(min-width:1024px){.Z{max-width:520px;border-left:1px solid var(--bd);border-right:1px solid var(--bd);box-shadow:0 0 60px rgba(0,0,0,.06)}.W{padding:0 32px 96px}}
 .hd{padding:14px 0 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:50}
 .lg{font-size:16px;font-weight:800;letter-spacing:-.4px;display:flex;align-items:center;gap:6px}
 .dt{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pu 2s ease infinite}
@@ -299,7 +301,8 @@ body{background:var(--bg);font-family:'Outfit','Noto Sans Bengali',sans-serif}
 .pl.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .pr{width:100%;height:10px;background:var(--inp);border-radius:5px;overflow:hidden}
 .prf{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--ac),#10B981);transition:width .6s ease}
-.nv{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:var(--cd);border-top:1px solid var(--bd);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:100}
+.nv{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:680px;background:var(--cd);border-top:1px solid var(--bd);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:100}
+@media(min-width:1024px){.nv{max-width:520px;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}}
 .ni{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;border-radius:9px;cursor:pointer;color:var(--t3);font-size:9px;font-weight:600;border:none;background:none;font-family:inherit;transition:all .12s}
 .ni.on{color:var(--ac);background:var(--acL)}
 .mn{font-family:'JetBrains Mono',monospace}
@@ -309,11 +312,15 @@ body{background:var(--bg);font-family:'Outfit','Noto Sans Bengali',sans-serif}
 .sdi{height:3.5px;border-radius:2px;background:var(--bd);transition:all .3s;cursor:pointer;flex:1;max-width:40px}
 .sdi.on{background:var(--ac)}.sdi.dn{background:var(--ac);opacity:.3}
 .kg{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px}
+@media(min-width:500px){.kg{grid-template-columns:repeat(5,1fr)}}
 .ko{padding:8px 4px;border-radius:9px;border:1.5px solid var(--bd);cursor:pointer;text-align:center;transition:all .12s;background:var(--cd);font-size:10px}
 .ko.on{border-color:var(--gold);background:var(--goldL)}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
 input[type=number]{-moz-appearance:textfield}
-@media(max-width:440px){.Z,.nv{max-width:100%}}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:500px){.g3{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:440px){.Z,.nv{max-width:100%}.W{padding:0 14px 96px}}
 @keyframes splash{0%{opacity:0;transform:scale(.8)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
 @keyframes loadbar{0%{left:-60%}100%{left:100%}}
 `;
@@ -441,7 +448,7 @@ input[type=number]{-moz-appearance:textfield}
     <p style={{ color: "var(--t3)", fontSize: 11, marginBottom: 14 }}>{bn ? "১২ মাসে ভাগ করে পরিশোধ করুন" : "Split across 12 months"}</p>
     {(!curZakat || curZakat.total <= 0) ? <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--t3)" }}><div style={{ fontSize: 28, marginBottom: 6 }}>📊</div><p style={{ fontSize: 13 }}>{bn ? "প্রথমে হিসাব করুন" : "Calculate Zakat first"}</p><button className="b bp" style={{ marginTop: 12 }} onClick={() => { setStep(0); setVals({}); go("calc"); }}>{bn ? "হিসাব" : "Calculate"}</button></div>
       : <><div className="cd" style={{ textAlign: "center" }}><div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600 }}>{bn ? "মাসিক লক্ষ্যমাত্রা" : "MONTHLY TARGET"}</div><div className="mn" style={{ fontSize: 28, fontWeight: 800, color: "var(--ac)", marginTop: 2 }}>{fmt(monthly)}</div><div style={{ fontSize: 11, color: "var(--t3)" }}>{fmt(curZakat.total)} ÷ 12</div></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>{MONTHS.map((m, i) => { const paid = monthPaid(i), done = paid >= monthly, partial = paid > 0; return <div key={i} className="cd" style={{ padding: 10, textAlign: "center", borderColor: done ? "var(--ac)" : partial ? "var(--gold)" : "var(--bd)", background: done ? "var(--acL)" : partial ? "var(--goldL)" : "var(--cd)" }}><div style={{ fontSize: 11, fontWeight: 700 }}>{m}</div><div className="mn" style={{ fontSize: 12, fontWeight: 700, color: done ? "var(--ac)" : partial ? "var(--gold)" : "var(--t3)" }}>{fmt(paid)}</div><div style={{ fontSize: 9, color: "var(--t3)" }}>{done ? "✓" : `/ ${fmt(monthly)}`}</div></div>; })}</div>
+        <div className="g3">{MONTHS.map((m, i) => { const paid = monthPaid(i), done = paid >= monthly, partial = paid > 0; return <div key={i} className="cd" style={{ padding: 10, textAlign: "center", borderColor: done ? "var(--ac)" : partial ? "var(--gold)" : "var(--bd)", background: done ? "var(--acL)" : partial ? "var(--goldL)" : "var(--cd)" }}><div style={{ fontSize: 11, fontWeight: 700 }}>{m}</div><div className="mn" style={{ fontSize: 12, fontWeight: 700, color: done ? "var(--ac)" : partial ? "var(--gold)" : "var(--t3)" }}>{fmt(paid)}</div><div style={{ fontSize: 9, color: "var(--t3)" }}>{done ? "✓" : `/ ${fmt(monthly)}`}</div></div>; })}</div>
         <div className="cd" style={{ marginTop: 8 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}><span style={{ fontWeight: 600 }}>{bn ? "পরিশোধিত" : "Paid"}</span><span className="mn" style={{ fontWeight: 800, color: "var(--ac)" }}>{fmt(totalPaid)}</span></div><div className="pr"><div className="prf" style={{ width: `${progress * 100}%` }} /></div><div style={{ textAlign: "center", fontSize: 11, color: "var(--t3)", marginTop: 4 }}>{Math.round(progress * 100)}% {bn ? "সম্পন্ন" : "done"}</div></div>
         <button className="b bp" style={{ width: "100%", marginTop: 8 }} onClick={() => go("tracker")}><IC.Plus />{bn ? "পেমেন্ট যোগ" : "Add Payment"}</button></>}
   </div>);
@@ -469,7 +476,7 @@ input[type=number]{-moz-appearance:textfield}
   const VJariyah = () => (<div className="fi">
     <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>🤝 {bn ? "সদকা জারিয়া" : "Sadaqah Jariyah"}</h2>
     <p style={{ color: "var(--t3)", fontSize: 11, marginBottom: 14, lineHeight: 1.5 }}>{bn ? "কাউকে আয়ের উপায় দিন — চলমান সওয়াব অর্জন করুন" : "Give someone a means of earning — gain ongoing reward"}</p>
-    {!selJariyah ? <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>{JARIYAH.map((j) => <div key={j.id} className="cd" style={{ padding: 14, cursor: "pointer", textAlign: "center" }} onClick={() => setSelJariyah(j)}><div style={{ fontSize: 28, marginBottom: 4 }}>{j.emoji}</div><div style={{ fontSize: 13, fontWeight: 700 }}>{bn ? j.nameBn : j.name}</div><div className="mn" style={{ fontSize: 12, fontWeight: 700, color: "var(--ac)", marginTop: 2 }}>{fmt(j.cost)}</div><div style={{ fontSize: 10, color: "var(--t3)" }}>~৳{j.income}/{bn ? "দিন" : "day"}</div></div>)}</div>
+    {!selJariyah ? <div className="g2">{JARIYAH.map((j) => <div key={j.id} className="cd" style={{ padding: 14, cursor: "pointer", textAlign: "center" }} onClick={() => setSelJariyah(j)}><div style={{ fontSize: 28, marginBottom: 4 }}>{j.emoji}</div><div style={{ fontSize: 13, fontWeight: 700 }}>{bn ? j.nameBn : j.name}</div><div className="mn" style={{ fontSize: 12, fontWeight: 700, color: "var(--ac)", marginTop: 2 }}>{fmt(j.cost)}</div><div style={{ fontSize: 10, color: "var(--t3)" }}>~৳{j.income}/{bn ? "দিন" : "day"}</div></div>)}</div>
       : <div className="fi">
         <button onClick={() => setSelJariyah(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t2)", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, marginBottom: 12, fontFamily: "inherit" }}><IC.Left />{bn ? "সব দেখুন" : "All Plans"}</button>
         <div className="cd" style={{ textAlign: "center" }}><div style={{ fontSize: 40, marginBottom: 6 }}>{selJariyah.emoji}</div><h3 style={{ fontSize: 18, fontWeight: 800 }}>{bn ? selJariyah.nameBn : selJariyah.name}</h3><p style={{ fontSize: 12, color: "var(--t2)", marginTop: 4, lineHeight: 1.5 }}>{bn ? selJariyah.descBn : selJariyah.desc}</p></div>
