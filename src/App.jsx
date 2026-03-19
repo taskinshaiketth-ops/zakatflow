@@ -506,6 +506,4 @@ input[type=number]{-moz-appearance:textfield}
   </div>
     <div className="nv">{[{ id: "home", l: bn ? "হোম" : "Home", i: <IC.Home /> }, { id: "calc", l: bn ? "হিসাব" : "Calc", i: <IC.Cash /> }, { id: "monthly", l: bn ? "মাসিক" : "Monthly", i: <IC.Cal /> }, { id: "tracker", l: bn ? "ট্র্যাক" : "Track", i: <IC.Bar /> }, { id: "jariyah", l: bn ? "জারিয়া" : "Jariyah", i: <IC.Heart /> }].map((n) => <button key={n.id} className={`ni ${view === n.id || (view === "result" && n.id === "calc") ? "on" : ""}`} onClick={() => { if (n.id === "calc") setStep(0); go(n.id); }}>{n.i}{n.l}</button>)}</div>
   </div></>);
-}git add .
-git commit -m "fix responsive layout for all screens"
-git push
+}
