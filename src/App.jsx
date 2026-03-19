@@ -283,16 +283,19 @@ export default function App() {
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);font-family:'Outfit','Noto Sans Bengali',sans-serif}
-.Z{color:var(--t1);min-height:100vh;min-height:100dvh;max-width:680px;margin:0 auto;position:relative;overflow-x:hidden}
-.W{position:relative;z-index:1;padding:0 16px 96px;min-height:100vh;min-height:100dvh;transition:opacity .1s}
-@media(min-width:600px){.W{padding:0 40px 96px}}
-@media(min-width:1024px){.Z{max-width:520px;border-left:1px solid var(--bd);border-right:1px solid var(--bd);box-shadow:0 0 60px rgba(0,0,0,.06)}.W{padding:0 32px 96px}}
-.hd{padding:14px 0 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:50}
+.Z{color:var(--t1);min-height:100vh;min-height:100dvh;width:100%;max-width:100%;margin:0 auto;position:relative;overflow-x:hidden}
+.W{position:relative;z-index:1;padding:0 16px 96px;min-height:100vh;min-height:100dvh;transition:opacity .1s;max-width:600px;margin:0 auto}
+@media(min-width:600px){.W{max-width:640px;padding:0 24px 96px}}
+@media(min-width:900px){.W{max-width:720px;padding:0 32px 96px}}
+@media(min-width:1200px){.W{max-width:800px}}
+.hd{padding:14px 0 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:50;max-width:inherit;margin:0 auto}
 .lg{font-size:16px;font-weight:800;letter-spacing:-.4px;display:flex;align-items:center;gap:6px}
 .dt{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pu 2s ease infinite}
 @keyframes pu{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
 .cd{background:var(--cd);border-radius:14px;padding:18px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:12px}
+@media(min-width:600px){.cd{padding:22px;border-radius:16px;margin-bottom:14px}}
 .b{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border-radius:11px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all .15s;font-family:inherit}
+@media(min-width:600px){.b{padding:14px 24px;font-size:14px;border-radius:12px}}
 .bp{background:var(--ac);color:#fff;box-shadow:0 2px 10px rgba(11,122,98,.25)}.bp:active{transform:scale(.98)}
 .bo{background:transparent;color:var(--ac);border:1.5px solid var(--ac)}
 .bg{background:var(--acL);color:var(--ac);border:none}
@@ -301,9 +304,9 @@ body{background:var(--bg);font-family:'Outfit','Noto Sans Bengali',sans-serif}
 .pl.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .pr{width:100%;height:10px;background:var(--inp);border-radius:5px;overflow:hidden}
 .prf{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--ac),#10B981);transition:width .6s ease}
-.nv{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:680px;background:var(--cd);border-top:1px solid var(--bd);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:100}
-@media(min-width:1024px){.nv{max-width:520px;border-left:1px solid var(--bd);border-right:1px solid var(--bd)}}
+.nv{position:fixed;bottom:0;left:0;right:0;background:var(--cd);border-top:1px solid var(--bd);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;z-index:100;max-width:800px;margin:0 auto}
 .ni{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;border-radius:9px;cursor:pointer;color:var(--t3);font-size:9px;font-weight:600;border:none;background:none;font-family:inherit;transition:all .12s}
+@media(min-width:600px){.ni{padding:6px 18px;font-size:11px;gap:3px}}
 .ni.on{color:var(--ac);background:var(--acL)}
 .mn{font-family:'JetBrains Mono',monospace}
 .fi{animation:fii .2s ease}@keyframes fii{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -319,8 +322,9 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 input[type=number]{-moz-appearance:textfield}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-@media(min-width:500px){.g3{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:440px){.Z,.nv{max-width:100%}.W{padding:0 14px 96px}}
+@media(min-width:500px){.g3{grid-template-columns:repeat(4,1fr);gap:10px}.g2{grid-template-columns:repeat(3,1fr);gap:10px}}
+@media(min-width:900px){.g3{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:380px){.W{padding:0 12px 96px}}
 @keyframes splash{0%{opacity:0;transform:scale(.8)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
 @keyframes loadbar{0%{left:-60%}100%{left:100%}}
 `;
@@ -502,4 +506,6 @@ input[type=number]{-moz-appearance:textfield}
   </div>
     <div className="nv">{[{ id: "home", l: bn ? "হোম" : "Home", i: <IC.Home /> }, { id: "calc", l: bn ? "হিসাব" : "Calc", i: <IC.Cash /> }, { id: "monthly", l: bn ? "মাসিক" : "Monthly", i: <IC.Cal /> }, { id: "tracker", l: bn ? "ট্র্যাক" : "Track", i: <IC.Bar /> }, { id: "jariyah", l: bn ? "জারিয়া" : "Jariyah", i: <IC.Heart /> }].map((n) => <button key={n.id} className={`ni ${view === n.id || (view === "result" && n.id === "calc") ? "on" : ""}`} onClick={() => { if (n.id === "calc") setStep(0); go(n.id); }}>{n.i}{n.l}</button>)}</div>
   </div></>);
-}
+}git add .
+git commit -m "fix responsive layout for all screens"
+git push
