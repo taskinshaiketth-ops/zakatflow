@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from "./firebase";
 
 // ═══════════ CONFIG & CONSTANTS ═══════════
 const BAJUS_FALLBACK = {
@@ -16,8 +17,8 @@ const TROY_OZ_TO_GRAM = 31.1035;
 
 // ═══════════ SUPPORT CONFIG (change to your numbers) ═══════════
 const SUPPORT = {
-  bkash: "01679276533",    // ← PUT YOUR BKASH NUMBER
-  nagad: "01679276533",    // ← PUT YOUR NAGAD NUMBER
+  bkash: "01XXXXXXXXX",    // ← PUT YOUR BKASH NUMBER
+  nagad: "01XXXXXXXXX",    // ← PUT YOUR NAGAD NUMBER
   name: "ZakatFlow Team",  // ← YOUR NAME OR BRAND
 };
 
@@ -133,18 +134,42 @@ export default function App() {
   const [ratesLoading, setRatesLoading] = useState(false);
   const [openGuide, setOpenGuide] = useState(null);
   const [calcName, setCalcName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
   const scrollRef = useRef(null);
   const bn = lang === "bn";
   const dailyAyat = AYAT[Math.floor(Date.now() / 86400000) % AYAT.length];
 
-  // ── Load ──
+  // ── Load data + Firebase auth listener + PWA install ──
   useEffect(() => {
-    const u = LS.get("zf-user"), d = LS.get("zf-dark"), p = LS.get("zf-profiles"), y = LS.get("zf-yrs"), g = LS.get("zf-gold"), r = LS.get("zf-rates"), fr = LS.get("zf-fitra");
+    const d = LS.get("zf-dark"), p = LS.get("zf-profiles"), y = LS.get("zf-yrs"), g = LS.get("zf-gold"), r = LS.get("zf-rates"), fr = LS.get("zf-fitra");
     if (d) setDark(d); if (p) setProfiles(p); if (y) setYears(y); if (g) setGoldEntries(g); if (fr) setFitraRate(fr);
     if (r && r.ts && Date.now() - r.ts < 6 * 3600000) {
       setGoldRates(r.goldRates); setSilverRate(r.silverRate); setRatesDate(r.date);
     } else { fetchLivePrices(); }
-    if (u) { setUser(u); setView("home"); } else { setTimeout(() => setView("login"), 1500); }
+
+    // Firebase auth state listener
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const u = { name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User", email: firebaseUser.email, photo: firebaseUser.photoURL, uid: firebaseUser.uid };
+        setUser(u); LS.set("zf-user", u); setView("home");
+      } else {
+        // Check for guest user in localStorage
+        const guest = LS.get("zf-user");
+        if (guest && guest.isGuest) { setUser(guest); setView("home"); }
+        else { setTimeout(() => setView("login"), 1500); }
+      }
+    });
+
+    // PWA install prompt capture
+    const handleInstall = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handleInstall);
+    // Check if already installed
+    if (window.matchMedia("(display-mode: standalone)").matches) setIsInstalled(true);
+
+    return () => { unsubscribe(); window.removeEventListener("beforeinstallprompt", handleInstall); };
   }, []);
 
   // ══════════════════════════════════════════
@@ -252,12 +277,43 @@ export default function App() {
     const updP = [prof, ...profiles]; saveProfiles(updP); setActiveProfile(prof);
     const rec = { ...r, year: yr, date: new Date().toISOString() };
     const updY = [...years.filter(y => y.year !== yr), rec].sort((a, b) => b.year - a.year);
-    setYears(updY); LS.set("zf-yrs", updY); go("result");
+    setYears(updY); LS.set("zf-yrs", updY);
+    // Show install prompt after first calculation
+    if (installPrompt && !isInstalled) setShowInstall(true);
+    go("result");
   };
 
   // ── Auth ──
-  const doLogin = () => { if (!loginName.trim()) return; const u = { name: loginName.trim() }; setUser(u); LS.set("zf-user", u); go("home"); };
-  const doLogout = () => { setUser(null); localStorage.removeItem("zf-user"); go("login"); };
+  const doGoogleLogin = async () => {
+    setAuthLoading(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      // onAuthStateChanged will handle the rest
+    } catch (err) {
+      console.log("Google login failed:", err);
+      alert(bn ? "Google লগইন ব্যর্থ। আবার চেষ্টা করুন।" : "Google login failed. Try again.");
+    }
+    setAuthLoading(false);
+  };
+  const doGuestLogin = () => {
+    if (!loginName.trim()) return;
+    const u = { name: loginName.trim(), isGuest: true };
+    setUser(u); LS.set("zf-user", u); go("home");
+  };
+  const doLogout = async () => {
+    try { await signOut(auth); } catch {}
+    setUser(null); localStorage.removeItem("zf-user"); go("login");
+  };
+  // PWA install trigger
+  const triggerInstall = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const result = await installPrompt.userChoice;
+      if (result.outcome === "accepted") setIsInstalled(true);
+      setInstallPrompt(null);
+    }
+    setShowInstall(false);
+  };
 
   // ── Computed ──
   const profPaid = activeProfile ? (activeProfile.payments || []).reduce((s, p) => s + p.amount, 0) : 0;
@@ -273,15 +329,59 @@ export default function App() {
   // ═══════════ SPLASH ═══════════
   if (view === "splash") return <><style>{css}</style><div className="Z"><div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#0B7A62,#059669)", color: "#fff", textAlign: "center", padding: 32 }}><div style={{ animation: "splash .6s ease" }}><div style={{ fontSize: 32, marginBottom: 12 }}>☪</div><div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>ZakatFlow</div>{dailyAyat.ar && <div className="ar" style={{ fontSize: 16, opacity: .8, marginTop: 8, direction: "rtl" }}>{dailyAyat.ar}</div>}<div style={{ fontSize: 12, opacity: .6, marginTop: 4 }}>{bn ? dailyAyat.bn : dailyAyat.en}</div><div style={{ fontSize: 10, opacity: .4, marginTop: 2 }}>— {dailyAyat.ref}</div><div style={{ marginTop: 24, width: 40, height: 3, borderRadius: 2, background: "rgba(255,255,255,.3)", position: "relative", overflow: "hidden" }}><div style={{ position: "absolute", height: "100%", width: "60%", background: "#fff", borderRadius: 2, animation: "loadbar 1.5s ease infinite" }} /></div></div></div></div></>;
 
-  // ═══════════ LOGIN ═══════════
-  if (view === "login") return <><style>{css}</style><div className="Z"><div style={{ minHeight: "100vh", padding: "60px 24px 40px", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto" }}><div style={{ textAlign: "center", marginBottom: 36 }}><div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}><span className="dt" style={{ width: 10, height: 10 }} /><span style={{ fontSize: 22, fontWeight: 800 }}>ZakatFlow</span></div><h1 style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.3 }}>{bn ? "বিসমিল্লাহ, শুরু করুন" : "Bismillah, Let's Begin"}</h1><p style={{ color: "var(--t2)", fontSize: 13, marginTop: 8 }}>{bn ? dailyAyat.bn : dailyAyat.en}</p><p style={{ color: "var(--t3)", fontSize: 10, marginTop: 2 }}>— {dailyAyat.ref}</p></div>{!loginMethod ? <><button onClick={() => setLoginMethod("google")} style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "1.5px solid var(--bd)", background: "var(--cd)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 10, fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "var(--t1)" }}><IC.Google />{bn ? "Google দিয়ে" : "Continue with Google"}</button><button onClick={() => setLoginMethod("phone")} style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "1.5px solid var(--bd)", background: "var(--cd)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 10, fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "var(--t1)" }}><IC.Phone />{bn ? "মোবাইল নম্বর" : "Continue with Phone"}</button></> : <div className="fi"><button onClick={() => setLoginMethod(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t2)", display: "flex", marginBottom: 16 }}><IC.Left /></button><div style={{ marginBottom: 16 }}><label style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", marginBottom: 5, display: "block" }}>{bn ? "আপনার নাম" : "Your Name"}</label><input type="text" value={loginName} onChange={e => setLoginName(e.target.value)} placeholder={bn ? "নাম" : "Name"} style={{ width: "100%", padding: "14px 16px", border: "1.5px solid var(--bd)", borderRadius: 11, fontSize: 15, background: "var(--inp)", color: "var(--t1)", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} autoFocus onKeyDown={e => e.key === "Enter" && doLogin()} /></div><button className="b bp" style={{ width: "100%", padding: 15, fontSize: 15 }} onClick={doLogin}>{bn ? "শুরু" : "Get Started"} <IC.Right /></button></div>}<div style={{ flex: 1 }} /><div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24 }}><button className={`pl ${lang === "en" ? "on" : ""}`} onClick={() => setLang("en")}>EN</button><button className={`pl ${lang === "bn" ? "on" : ""}`} onClick={() => setLang("bn")}>বাং</button></div></div></div></>;
+  // ═══════════ LOGIN — Real Google Auth + Guest ═══════════
+  if (view === "login") return <><style>{css}</style><div className="Z"><div style={{ minHeight: "100vh", padding: "60px 24px 40px", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto" }}>
+    <div style={{ textAlign: "center", marginBottom: 36 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}><span className="dt" style={{ width: 10, height: 10 }} /><span style={{ fontSize: 22, fontWeight: 800 }}>ZakatFlow</span></div>
+      <h1 style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.3 }}>{bn ? "বিসমিল্লাহ, শুরু করুন" : "Bismillah, Let's Begin"}</h1>
+      <p style={{ color: "var(--t2)", fontSize: 13, marginTop: 8 }}>{bn ? dailyAyat.bn : dailyAyat.en}</p>
+      <p style={{ color: "var(--t3)", fontSize: 10, marginTop: 2 }}>— {dailyAyat.ref}</p>
+    </div>
+    {/* Google Sign-In — Primary */}
+    <button onClick={doGoogleLogin} disabled={authLoading} style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "1.5px solid var(--bd)", background: "var(--cd)", display: "flex", alignItems: "center", gap: 12, cursor: authLoading ? "wait" : "pointer", marginBottom: 10, fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "var(--t1)", opacity: authLoading ? 0.6 : 1 }}>
+      <IC.Google />{authLoading ? (bn ? "সংযোগ হচ্ছে..." : "Connecting...") : (bn ? "Google দিয়ে শুরু করুন" : "Continue with Google")}
+    </button>
+    <div style={{ fontSize: 10, color: "var(--t3)", textAlign: "center", marginBottom: 10, lineHeight: 1.4 }}>{bn ? "✓ আপনার ডেটা সুরক্ষিত থাকবে • ✓ ডিভাইস পরিবর্তনেও ডেটা থাকবে" : "✓ Your data stays secure • ✓ Syncs across devices"}</div>
+    {/* Divider */}
+    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0 14px" }}><div style={{ flex: 1, height: 1, background: "var(--bd)" }} /><span style={{ fontSize: 11, color: "var(--t3)", fontWeight: 600 }}>{bn ? "অথবা" : "OR"}</span><div style={{ flex: 1, height: 1, background: "var(--bd)" }} /></div>
+    {/* Guest Login */}
+    {!loginMethod ? <button onClick={() => setLoginMethod("guest")} style={{ width: "100%", padding: "12px 20px", borderRadius: 12, border: "1.5px solid var(--bd)", background: "var(--cd)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "var(--t2)" }}><IC.Phone />{bn ? "নাম দিয়ে শুরু করুন (অতিথি)" : "Continue as Guest"}</button>
+    : <div className="fi">
+      <button onClick={() => setLoginMethod(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t2)", display: "flex", marginBottom: 12 }}><IC.Left /></button>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", marginBottom: 5, display: "block" }}>{bn ? "আপনার নাম" : "Your Name"}</label>
+        <input type="text" value={loginName} onChange={e => setLoginName(e.target.value)} placeholder={bn ? "নাম" : "Name"} style={{ width: "100%", padding: "14px 16px", border: "1.5px solid var(--bd)", borderRadius: 11, fontSize: 15, background: "var(--inp)", color: "var(--t1)", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} autoFocus onKeyDown={e => e.key === "Enter" && doGuestLogin()} />
+      </div>
+      <button className="b bp" style={{ width: "100%", padding: 15, fontSize: 15 }} onClick={doGuestLogin}>{bn ? "শুরু করুন" : "Get Started"} <IC.Right /></button>
+      <p style={{ fontSize: 10, color: "var(--t3)", textAlign: "center", marginTop: 8 }}>{bn ? "⚠ অতিথি মোডে ডেটা শুধু এই ডিভাইসে থাকবে" : "⚠ Guest mode: data stays on this device only"}</p>
+    </div>}
+    <div style={{ flex: 1 }} />
+    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24 }}>
+      <button className={`pl ${lang === "en" ? "on" : ""}`} onClick={() => setLang("en")}>EN</button>
+      <button className={`pl ${lang === "bn" ? "on" : ""}`} onClick={() => setLang("bn")}>বাং</button>
+    </div>
+  </div></div></>;
 
   // ═══════════ HEADER ═══════════
   const Hdr = () => <div className="hd"><div className="lg">{view !== "home" && <button onClick={() => go("home")} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", color: "var(--t1)" }}><IC.Left /></button>}<span className="dt" /> ZakatFlow</div><div style={{ display: "flex", gap: 5, alignItems: "center" }}><button onClick={tgDark} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t2)", display: "flex", padding: 3 }}>{dark ? <IC.Sun /> : <IC.Moon />}</button><button className={`pl ${lang === "en" ? "on" : ""}`} onClick={() => setLang("en")}>EN</button><button className={`pl ${lang === "bn" ? "on" : ""}`} onClick={() => setLang("bn")}>বাং</button></div></div>;
 
   // ═══════════ HOME ═══════════
   const VHome = () => <div className="fi">
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div><div style={{ fontSize: 13, color: "var(--t3)" }}>{bn ? "আস-সালামু আলাইকুম" : "Assalamu Alaikum"} 👋</div><div style={{ fontSize: 20, fontWeight: 800 }}>{user?.name}</div></div><button onClick={doLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t3)", display: "flex", padding: 4 }}><IC.Logout /></button></div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {user?.photo ? <img src={user.photo} alt="" style={{ width: 36, height: 36, borderRadius: 10, objectFit: "cover" }} referrerPolicy="no-referrer" /> : <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--acL)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, color: "var(--ac)" }}>{(user?.name || "U")[0]}</div>}
+        <div><div style={{ fontSize: 13, color: "var(--t3)" }}>{bn ? "আস-সালামু আলাইকুম" : "Assalamu Alaikum"} 👋</div><div style={{ fontSize: 18, fontWeight: 800 }}>{user?.name}</div>{user?.isGuest && <div style={{ fontSize: 9, color: "var(--gold)" }}>Guest • {bn ? "Google দিয়ে লগইন করলে ডেটা সুরক্ষিত থাকবে" : "Sign in with Google for data safety"}</div>}</div>
+      </div>
+      <button onClick={doLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t3)", display: "flex", padding: 4 }}><IC.Logout /></button>
+    </div>
+    {/* PWA Install Banner */}
+    {!isInstalled && installPrompt && <div className="cd fi" style={{ background: "linear-gradient(135deg, #0B7A62, #059669)", color: "#fff", border: "none", cursor: "pointer", padding: 14 }} onClick={triggerInstall}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 24 }}>📲</span>
+        <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700 }}>{bn ? "ফোনে ইনস্টল করুন" : "Install on your phone"}</div><div style={{ fontSize: 10, opacity: .8 }}>{bn ? "ফ্রি • ১ সেকেন্ড • অফলাইনেও কাজ করে" : "Free • 1 second • Works offline"}</div></div>
+        <div className="b" style={{ background: "#fff", color: "#0B7A62", padding: "8px 14px", fontSize: 12 }}>{bn ? "ইনস্টল" : "Install"}</div>
+      </div>
+    </div>}
     <div style={{ background: "var(--acL)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, textAlign: "center" }}>{dailyAyat.ar && <div className="ar" style={{ fontSize: 16, color: "var(--ac)", direction: "rtl", marginBottom: 4 }}>{dailyAyat.ar}</div>}<div style={{ fontSize: 11, color: "var(--ac)", lineHeight: 1.4 }}>{bn ? dailyAyat.bn : dailyAyat.en}</div><div style={{ fontSize: 9, color: "var(--t3)", marginTop: 2 }}>— {dailyAyat.ref}</div></div>
     {/* Nisab Card — LIVE rates with source */}
     <div className="cd" style={{ background: "linear-gradient(135deg,#0B7A62,#06805A)", color: "#fff", border: "none" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .8, opacity: .6 }}>NISAB • {ratesDate}</span>{ratesLoading && <span style={{ fontSize: 9, opacity: .5 }}>Updating...</span>}</div><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 11, opacity: .75 }}>{bn ? "স্বর্ণ ৭.৫ভরি" : "Gold 7.5 Bhori"}</div><div className="mn" style={{ fontSize: 17, fontWeight: 800 }}>{formatCurrency(NISAB_GOLD_GRAMS * goldRates["22K"].g)}</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 11, opacity: .75 }}>{bn ? "রূপা ৫২.৫তোলা" : "Silver 52.5 Tola"}</div><div className="mn" style={{ fontSize: 17, fontWeight: 800 }}>{formatCurrency(NISAB_SILVER_GRAMS * silverRate)}</div></div></div><div style={{ fontSize: 8, opacity: .35, marginTop: 6, textAlign: "center" }}>{bn ? "উৎস: gold-api.com (আন্তর্জাতিক স্পট) × open.er-api.com (BDT রেট) × BD প্রিমিয়াম" : "Source: gold-api.com (intl spot) × open.er-api.com (BDT rate) × BD retail premium"}</div></div>
@@ -340,6 +440,16 @@ export default function App() {
       </div>
       <div style={{ fontSize: 9, color: "#16A34A", marginTop: 8, opacity: 0.6 }}>{bn ? "যেকোনো পরিমাণ • সম্পূর্ণ ঐচ্ছিক" : "Any amount • Completely voluntary"}</div>
     </div>
+    {/* Install prompt after calculation */}
+    {showInstall && !isInstalled && installPrompt && <div className="cd fi" style={{ border: "2px solid var(--ac)", textAlign: "center" }}>
+      <div style={{ fontSize: 24, marginBottom: 6 }}>📲</div>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{bn ? "ZakatFlow ইনস্টল করুন!" : "Install ZakatFlow!"}</div>
+      <div style={{ fontSize: 11, color: "var(--t2)", lineHeight: 1.5, marginBottom: 12 }}>{bn ? "ফোনের হোম স্ক্রিনে যোগ করুন — অ্যাপ স্টোর লাগবে না, সম্পূর্ণ ফ্রি, অফলাইনেও কাজ করে।" : "Add to home screen — no app store needed, completely free, works offline."}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="b bg" style={{ flex: 1 }} onClick={() => setShowInstall(false)}>{bn ? "পরে" : "Later"}</button>
+        <button className="b bp" style={{ flex: 1 }} onClick={triggerInstall}>{bn ? "ইনস্টল করুন" : "Install Now"}</button>
+      </div>
+    </div>}
   </div>; };
 
   // ═══════════ TRACKER ═══════════
