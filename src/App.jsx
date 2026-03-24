@@ -138,6 +138,8 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [showIosPrompt, setShowIosPrompt] = useState(false);
   const scrollRef = useRef(null);
   const bn = lang === "bn";
   const dailyAyat = AYAT[Math.floor(Date.now() / 86400000) % AYAT.length];
@@ -163,11 +165,20 @@ export default function App() {
       }
     });
 
-    // PWA install prompt capture
+    // iOS Detection & PWA Install setup
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIos(isIosDevice);
+
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    if (isStandalone) {
+      setIsInstalled(true);
+    } else if (isIosDevice) {
+      setShowIosPrompt(true);
+    }
+
     const handleInstall = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handleInstall);
-    // Check if already installed
-    if (window.matchMedia("(display-mode: standalone)").matches) setIsInstalled(true);
 
     return () => { unsubscribe(); window.removeEventListener("beforeinstallprompt", handleInstall); };
   }, []);
@@ -374,6 +385,7 @@ export default function App() {
       </div>
       <button onClick={doLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t3)", display: "flex", padding: 4 }}><IC.Logout /></button>
     </div>
+    
     {/* PWA Install Banner */}
     {!isInstalled && installPrompt && <div className="cd fi" style={{ background: "linear-gradient(135deg, #0B7A62, #059669)", color: "#fff", border: "none", cursor: "pointer", padding: 14 }} onClick={triggerInstall}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -382,6 +394,16 @@ export default function App() {
         <div className="b" style={{ background: "#fff", color: "#0B7A62", padding: "8px 14px", fontSize: 12 }}>{bn ? "ইনস্টল" : "Install"}</div>
       </div>
     </div>}
+    
+    {/* iOS Manual Install Banner */}
+    {!isInstalled && showIosPrompt && <div className="cd fi" style={{ background: "linear-gradient(135deg, #0B7A62, #059669)", color: "#fff", border: "none", padding: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 24 }}>🍎</span>
+        <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700 }}>{bn ? "iPhone-এ ইনস্টল করুন" : "Install on your iPhone"}</div><div style={{ fontSize: 10, opacity: .8 }}>{bn ? "সাফারির নিচে 'Share' আইকন ট্যাপ করে 'Add to Home Screen' নির্বাচন করুন।" : "Tap the 'Share' icon below, then select 'Add to Home Screen'."}</div></div>
+        <button className="b" style={{ background: "transparent", border: "1px solid #fff", color: "#fff", padding: "8px", fontSize: 12 }} onClick={() => setShowIosPrompt(false)}>✕</button>
+      </div>
+    </div>}
+
     <div style={{ background: "var(--acL)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, textAlign: "center" }}>{dailyAyat.ar && <div className="ar" style={{ fontSize: 16, color: "var(--ac)", direction: "rtl", marginBottom: 4 }}>{dailyAyat.ar}</div>}<div style={{ fontSize: 11, color: "var(--ac)", lineHeight: 1.4 }}>{bn ? dailyAyat.bn : dailyAyat.en}</div><div style={{ fontSize: 9, color: "var(--t3)", marginTop: 2 }}>— {dailyAyat.ref}</div></div>
     {/* Nisab Card — LIVE rates with source */}
     <div className="cd" style={{ background: "linear-gradient(135deg,#0B7A62,#06805A)", color: "#fff", border: "none" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .8, opacity: .6 }}>NISAB • {ratesDate}</span>{ratesLoading && <span style={{ fontSize: 9, opacity: .5 }}>Updating...</span>}</div><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 11, opacity: .75 }}>{bn ? "স্বর্ণ ৭.৫ভরি" : "Gold 7.5 Bhori"}</div><div className="mn" style={{ fontSize: 17, fontWeight: 800 }}>{formatCurrency(NISAB_GOLD_GRAMS * goldRates["22K"].g)}</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 11, opacity: .75 }}>{bn ? "রূপা ৫২.৫তোলা" : "Silver 52.5 Tola"}</div><div className="mn" style={{ fontSize: 17, fontWeight: 800 }}>{formatCurrency(NISAB_SILVER_GRAMS * silverRate)}</div></div></div><div style={{ fontSize: 8, opacity: .35, marginTop: 6, textAlign: "center" }}>{bn ? "উৎস: gold-api.com (আন্তর্জাতিক স্পট) × open.er-api.com (BDT রেট) × BD প্রিমিয়াম" : "Source: gold-api.com (intl spot) × open.er-api.com (BDT rate) × BD retail premium"}</div></div>
@@ -536,7 +558,7 @@ export default function App() {
     { id: "nisab", icon: "⚖️", t: "Nisab Threshold", tb: "নিসাব — সীমা কত?", en: "Nisab is the minimum wealth before Zakat is due.\n\n• Gold: 7.5 Bhori (87.48g)\n• Silver: 52.5 Tola (612.36g)\n\nMost BD scholars recommend SILVER standard — it's lower, so more people pay, helping more poor. If net wealth (assets minus debts) exceeds either, Zakat is due.", bn: "নিসাব হলো ন্যূনতম সম্পদ যা থাকলে যাকাত ফরজ।\n\n• স্বর্ণ: ৭.৫ ভরি (৮৭.৪৮ গ্রাম)\n• রূপা: ৫২.৫ তোলা (৬১২.৩৬ গ্রাম)\n\nঅধিকাংশ আলেম রূপার মানদণ্ড ব্যবহারের পরামর্শ দেন কারণ এটি কম — বেশি মানুষ যাকাত দেবেন।", ref: "Sahih Muslim 979" },
     { id: "assets", icon: "💰", t: "What is Zakatable?", tb: "কোন সম্পদে যাকাত?", en: "ZAKATABLE: Cash, bank savings, bKash/Nagad, gold & silver (all forms), stocks, FDR/DPS, sanchayapatra, provident fund (if withdrawable), business inventory, receivables, investment property, crypto.\n\nNOT ZAKATABLE: Personal home, personal car, furniture, clothes, tools of trade.\n\nItems BD people miss: Sanchayapatra, DPS, bKash balance, somiti savings, unpaid salary.", bn: "যাকাতযোগ্য: নগদ, ব্যাংক, বিকাশ/নগদ, স্বর্ণ-রূপা, শেয়ার, এফডিআর/ডিপিএস, সঞ্চয়পত্র, প্রভিডেন্ট ফান্ড, ব্যবসার মজুদ, পাওনা, বিনিয়োগ সম্পত্তি, ক্রিপ্টো।\n\nযাকাতযোগ্য নয়: বাসস্থান, ব্যক্তিগত গাড়ি, আসবাবপত্র।\n\nযা মিস করেন: সঞ্চয়পত্র, ডিপিএস, বিকাশ ব্যালেন্স, সমিতি, বকেয়া বেতন।", ref: "Al-Baqarah 2:267" },
     { id: "howmuch", icon: "🔢", t: "How Much to Pay?", tb: "কত দিতে হবে?", en: "Standard: 2.5% of net zakatable wealth.\n\nAgriculture is DIFFERENT:\n• Rain-fed crops: 10% (Ushr)\n• Irrigated crops: 5% (Half Ushr)\n• NOT 2.5%!\n\nExample: Net wealth ৳10,00,000 → Zakat = ৳25,000.", bn: "সাধারণ: নিট সম্পদের ২.৫%।\n\nকৃষি আলাদা:\n• বৃষ্টিনির্ভর: ১০% (উশর)\n• সেচনির্ভর: ৫%\n• ২.৫% নয়!\n\nউদাহরণ: নিট সম্পদ ৳১০,০০,০০০ → যাকাত = ৳২৫,০০০।", ref: "Bukhari 1483" },
-    { id: "when", icon: "📅", t: "When to Pay?", tb: "কখন দিতে হবে?", en: "After one lunar year (Hawl) from when your wealth first exceeded Nisab. Many calculate in Ramadan for extra reward. You can pay in advance or monthly installments. Don't delay once due.", bn: "সম্পদ নিসাব ছাড়ানোর এক চন্দ্র বছর পর ফরজ। অনেকে রমজানে হিসাব করেন। অগ্রিম বা মাসিক কিস্তিতে দেওয়া যায়। ফরজ হলে বিলম্ব করবেন না।", ref: "Abu Dawud 1577" },
+    { id: "when", icon: "📅", t: "When to Pay?", tb: "কখন দিতে হবে?", en: "After one lunar year (Hawl) from when your wealth first exceeded Nisab. Many calculate in Ramadan for extra reward. You can pay in advance or monthly installments. Don't delay once due.", bn: "সম্পদ নিসাব ছাড়ানোর এক চন্দ্র বছর পর ফরজ। অনেকে রমজানে হিসাব করেন। অগ্রিম বা মাসিক কিস্তিতে দেওয়া যায়। ফরজ হলে বিলম্ব করবেনবিধা করবেন না।", ref: "Abu Dawud 1577" },
     { id: "receivers", icon: "🤲", t: "Who Can Receive?", tb: "কারা যাকাত পাবে?", en: "Quran specifies 8 categories (At-Tawbah 9:60):\n\n1. Faqir — The poor\n2. Miskin — The needy\n3. Amil — Zakat collectors\n4. Mu'allaf — New Muslims\n5. Riqab — Freeing captives\n6. Gharimin — Those in debt\n7. Fi Sabilillah — In Allah's cause\n8. Ibn Sabil — Stranded travelers\n\nCANNOT give to: Parents, grandparents, children, spouse, non-Muslims (majority view).", bn: "কুরআনে ৮টি শ্রেণি (আত-তাওবাহ ৯:৬০):\n\n১. ফকির — দরিদ্র\n২. মিসকিন — অভাবী\n৩. আমিল — যাকাত সংগ্রহকারী\n৪. মুআল্লাফ — নওমুসলিম\n৫. রিকাব — দাসমুক্তি\n৬. গারিমিন — ঋণগ্রস্ত\n৭. ফী সাবিলিল্লাহ — আল্লাহর পথে\n৮. ইবনুস সাবিল — পথিক\n\nযাদের দেওয়া যাবে না: পিতা-মাতা, সন্তান, স্বামী/স্ত্রী।", ref: "At-Tawbah 9:60" },
     { id: "gold_rules", icon: "🪙", t: "Gold & Jewelry Rules", tb: "স্বর্ণ ও গহনার নিয়ম", en: "Hanafi (majority in BD): ALL gold is zakatable — including daily-wear jewelry. This is the safer position.\n\nShafi'i: Personal jewelry in regular use may be exempt.\n\nIf total gold exceeds 7.5 Bhori (even across multiple pieces/karats), Zakat is due on full market value at current rates.", bn: "হানাফী (বাংলাদেশে সংখ্যাগরিষ্ঠ): সমস্ত স্বর্ণে যাকাত — প্রতিদিন পরা গহনা সহ।\n\nশাফিঈ: ব্যক্তিগত গহনা মুক্ত হতে পারে।\n\nমোট স্বর্ণ ৭.৫ ভরি ছাড়ালে পুরো বাজার মূল্যে যাকাত।", ref: "Muslim 987" },
     { id: "mistakes", icon: "⚠️", t: "Common Mistakes", tb: "সাধারণ ভুল", en: "1. Forgetting bKash/Nagad balance\n2. Not counting sanchayapatra & DPS\n3. Deducting FULL loan instead of current EMI\n4. Thinking jewelry is exempt (Hanafi: it's not)\n5. Using 2.5% on crops (should be 5-10%)\n6. Giving Zakat to parents/children\n7. Mixing Zakat with Sadaqah Jariyah\n8. Not paying because 'no cash' (sell if needed)\n9. Not counting wife's gold separately\n10. Delaying year after year", bn: "১. বিকাশ/নগদ ব্যালেন্স ভুলে যাওয়া\n২. সঞ্চয়পত্র/ডিপিএস না গোণা\n৩. পুরো ঋণ বাদ দেওয়া (শুধু EMI বাদ দিন)\n৪. গহনায় যাকাত নেই ভাবা (হানাফী: আছে)\n৫. কৃষিতে ২.৫% (৫-১০% হওয়া উচিত)\n৬. পিতা-মাতা/সন্তানকে দেওয়া\n৭. যাকাত ও জারিয়া মেশানো\n৮. 'নগদ নেই' বলে না দেওয়া\n৯. স্ত্রীর স্বর্ণ আলাদা না গোণা\n১০. বছরের পর বছর বিলম্ব", ref: "Scholarly consensus" },
